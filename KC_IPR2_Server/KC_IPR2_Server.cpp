@@ -88,12 +88,9 @@ void print_books(vector<book_data>& books) {
 DWORD WINAPI ThreadFunc(LPVOID client_socket) {
 	SOCKET s2 = ((SOCKET*)client_socket)[0];
 	char buf[100];
-	char buf1[100];
-	//send(s2,"Welcome new client!\n",sizeof("Welcome new client!\n"),0);
-	while (recv(s2, buf, sizeof(buf), 0)) {
-		cout << "Server received command: "<< buf << endl;
-		send(s2, buf, 100, 0);
-	}
+	recv(s2, buf, sizeof(buf), 0);
+	cout << "Server received command: " << buf << endl;
+	send(s2, buf, 100, 0);
 	closesocket(s2);
 	return 0;
 }

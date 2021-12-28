@@ -117,6 +117,14 @@ int bufToInt(const char buf) {
 	return -1;
 }
 
+string getClientRequest(const SOCKET& client_socket) {
+	char buf[500];
+	memset(&buf[0], 0, sizeof(buf));
+	recv(client_socket, buf, sizeof(buf), 0);
+	buf[strcspn(buf, "\n")] = 0;
+	return string(buf);
+}
+
 DWORD WINAPI ThreadFunc(LPVOID client_socket) {
 	char main_menu_choise, // yein
 		switch_menu_choise,	//yes
@@ -124,6 +132,7 @@ DWORD WINAPI ThreadFunc(LPVOID client_socket) {
 		result_quantity[30]; //yes
 
 	int num = 0;
+	book_data book;
 
 	SOCKET socket = ((SOCKET*)client_socket)[0];
 
@@ -177,18 +186,35 @@ DWORD WINAPI ThreadFunc(LPVOID client_socket) {
 			//отправляем результат
 			send(socket, message.c_str(), message.size(), 0);
 			break;
+		case '3':
+			try {
+				book.registration_number = getClientRequest(socket);
+				book.author = getClientRequest(socket);
+				book.name = getClientRequest(socket);
+				book.year_published = stoi(getClientRequest(socket));
+				book.quantity_page = stoi(getClientRequest(socket));
+				books_list.push_back(book);
 
+				message = "The book has been successfully added";
+			}
+			catch (const std::invalid_argument& e) {
+				std::cout << e.what() << "\n";
+				message = "Failed to added the book. Invalid data. Please try again";
+			}
+			catch (const std::out_of_range& e) {
+				std::cout << e.what() << "\n";
+				message = "Failed to added the book. Invalid data. Please try again";
+			}
+			
+			//отправляем результат добавления
+			send(socket, message.c_str(), message.size(), 0);
+			break;
 		case '4':
 			memset(&buf[0], 0, sizeof(buf));
 			//получаем имя автора
 			recv(socket, buf, sizeof(buf), 0);
 			buf[strcspn(buf, "\n")] = 0;
 			message = deleteBook(buf);
-
-			//memset(&buf[0], 0, sizeof(buf));
-			////получаем индекс книги для удаления
-			//recv(socket, buf, sizeof(buf), 0);
-			//message = deleteBook(buf);
 
 			//отправляем результат удаления
 			send(socket, message.c_str(), message.size(), 0);

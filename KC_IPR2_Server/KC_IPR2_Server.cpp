@@ -85,11 +85,11 @@ string get_all_books() {
 	return message;
 }
 
-string deleteBook(const char* buf) {
-	string message("Will delete book");
+string deleteBook(const string& client_request) {
+	string message;
 	int book_index = -1;
 	try {
-		book_index = stoi(buf);
+		book_index = stoi(client_request);
 	}
 	catch (const std::invalid_argument& e) {
 		std::cout << e.what() << "\n";
@@ -126,104 +126,93 @@ string getClientRequest(const SOCKET& client_socket) {
 }
 
 DWORD WINAPI ThreadFunc(LPVOID client_socket) {
-	char main_menu_choise, // yein
-		switch_menu_choise,	//yes
-		buf[500],
-		result_quantity[30]; //yes
-
-	int num = 0;
-	book_data book;
+	int main_menu_choise;
+	string client_request;
+	book_data new_book;
+	vector<book_data> books_filtered;
+	string message_to_client;
 
 	SOCKET socket = ((SOCKET*)client_socket)[0];
 
 	while (true) {
-		memset(&buf[0], 0, sizeof(buf));
-		//Получаем команду от клиента
-		recv(socket, buf, sizeof(buf), 0);
-		main_menu_choise = buf[0];
-		int books_size;
-		vector<book_data> books_filtered;
-		string author_name = "";
-		string result_books_names;
-		string message;
+		try {
+			main_menu_choise = stoi(getClientRequest(socket));
 
-		cout << "Server received command: " << buf << endl;
+			cout << "Server received command: " << main_menu_choise << endl;
 
-		switch (main_menu_choise) {
-		case '1':
-			memset(&buf[0], 0, sizeof(buf));
-			//получаем имя автора
-			recv(socket, buf, sizeof(buf), 0);
-			buf[strcspn(buf, "\n")] = 0;
-			author_name = buf;
+			switch (main_menu_choise) {
+			case 1:
+				//получаем имя автора
+				client_request = getClientRequest(socket);
+				cout << "Recieved author name: " << client_request << endl;
 
-			cout << "Recieved author name: " << author_name << endl;
+				copy_if(books_list.begin(), books_list.end(), back_inserter(books_filtered),
+					[&client_request](auto const& book)
+					{ return book.author == client_request; });
 
-			copy_if(books_list.begin(), books_list.end(), back_inserter(books_filtered),
-				[&author_name](auto const& book)
-				{ return book.author == author_name; });
-
-			if (books_filtered.size() == 0) {
-				message = "No author found. Please try to enter different author";
-			}
-			else {
-				for (unsigned i = 0; i < books_filtered.size(); i++) {
-					cout << books_filtered[i].name << endl;
-					message += books_filtered[i].name + "\n";
+				if (books_filtered.size() == 0) {
+					message_to_client = "No author found. Please try to enter different author";
 				}
-			}
+				else {
+					for (unsigned i = 0; i < books_filtered.size(); i++) {
+						cout << books_filtered[i].name << endl;
+						message_to_client += books_filtered[i].name + "\n";
+					}
+				}
 
-			//отправляем результат поиска
-			send(socket, message.c_str(), message.size(), 0);
-			break;
-		case '2':
-			if (books_list.size() > 0) {
-				message = get_all_books();
-			}
-			else {
-				message = "No author found. Please try to enter different author";
-			}
-			//отправляем результат
-			send(socket, message.c_str(), message.size(), 0);
-			break;
-		case '3':
-			try {
-				book.registration_number = getClientRequest(socket);
-				book.author = getClientRequest(socket);
-				book.name = getClientRequest(socket);
-				book.year_published = stoi(getClientRequest(socket));
-				book.quantity_page = stoi(getClientRequest(socket));
-				books_list.push_back(book);
+				//отправляем результат поиска
+				send(socket, message_to_client.c_str(), message_to_client.size(), 0);
+				break;
+			case 2:
+				if (books_list.size() > 0) {
+					message_to_client = get_all_books();
+				}
+				else {
+					message_to_client = "No author found. Please try to enter different author";
+				}
+				//отправляем результат
+				send(socket, message_to_client.c_str(), message_to_client.size(), 0);
+				break;
+			case 3:
+				try {
+					new_book.registration_number = getClientRequest(socket);
+					new_book.author = getClientRequest(socket);
+					new_book.name = getClientRequest(socket);
+					new_book.year_published = stoi(getClientRequest(socket));
+					new_book.quantity_page = stoi(getClientRequest(socket));
+					books_list.push_back(new_book);
 
-				message = "The book has been successfully added";
-			}
-			catch (const std::invalid_argument& e) {
-				std::cout << e.what() << "\n";
-				message = "Failed to added the book. Invalid data. Please try again";
-			}
-			catch (const std::out_of_range& e) {
-				std::cout << e.what() << "\n";
-				message = "Failed to added the book. Invalid data. Please try again";
-			}
-			
-			//отправляем результат добавления
-			send(socket, message.c_str(), message.size(), 0);
-			break;
-		case '4':
-			memset(&buf[0], 0, sizeof(buf));
-			//получаем имя автора
-			recv(socket, buf, sizeof(buf), 0);
-			buf[strcspn(buf, "\n")] = 0;
-			message = deleteBook(buf);
+					message_to_client = "The book has been successfully added";
+				}
+				catch (const std::invalid_argument& e) {
+					std::cout << e.what() << "\n";
+					message_to_client = "Failed to added the book. Invalid data. Please try again";
+				}
+				catch (const std::out_of_range& e) {
+					std::cout << e.what() << "\n";
+					message_to_client = "Failed to added the book. Invalid data. Please try again";
+				}
 
-			//отправляем результат удаления
-			send(socket, message.c_str(), message.size(), 0);
-			break;
-		default:
-			cout << "Coonection will be closed" << endl;
-			closesocket(socket);
-			exit(0);
-			break;
+				//отправляем результат добавления
+				send(socket, message_to_client.c_str(), message_to_client.size(), 0);
+				break;
+			case 4:
+				client_request = getClientRequest(socket);
+				message_to_client = deleteBook(client_request);
+
+				//отправляем результат удаления
+				send(socket, message_to_client.c_str(), message_to_client.size(), 0);
+				break;
+			default:
+				cout << "Coonection will be closed" << endl;
+				closesocket(socket);
+				exit(0);
+				break;
+			}
+		}
+		catch (const std::invalid_argument& e) {
+			cout << e.what() << endl;
+			cout << "Wrong main menu choice, try again" << endl;
 		}
 	}
 	return 0;

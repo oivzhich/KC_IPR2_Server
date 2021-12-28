@@ -85,20 +85,52 @@ string get_all_books() {
 	return message;
 }
 
+string deleteBook(const char* buf) {
+	string message("Will delete book");
+	int book_index = -1;
+	try {
+		book_index = stoi(buf);
+	}
+	catch (const std::invalid_argument& e) {
+		std::cout << e.what() << "\n";
+	}
+	catch (const std::out_of_range& e) {
+		std::cout << e.what() << "\n";
+	}
+	cout << "Recieved book index to delete: " << book_index << endl;
+	if (book_index < 0) {
+		message = "Incorrect input for book index";
+	}
+	else {
+		if (books_list.size() < book_index) {
+			message = "Provided book index does not exist";
+		}
+		else {
+			books_list.erase(books_list.begin() + book_index);
+			message = "The book with index " + to_string(book_index) + " has been deleted";
+		}
+	}
+	return message;
+}
+
+int bufToInt(const char buf) {
+	return -1;
+}
+
 DWORD WINAPI ThreadFunc(LPVOID client_socket) {
-	char main_menu_choise, // yes
+	char main_menu_choise, // yein
 		switch_menu_choise,	//yes
 		buf[500],
 		result_quantity[30]; //yes
 
 	int num = 0;
 
-	SOCKET s2 = ((SOCKET*)client_socket)[0];
+	SOCKET socket = ((SOCKET*)client_socket)[0];
 
 	while (true) {
 		memset(&buf[0], 0, sizeof(buf));
 		//Получаем команду от клиента
-		recv(s2, buf, sizeof(buf), 0);
+		recv(socket, buf, sizeof(buf), 0);
 		main_menu_choise = buf[0];
 		int books_size;
 		vector<book_data> books_filtered;
@@ -112,7 +144,7 @@ DWORD WINAPI ThreadFunc(LPVOID client_socket) {
 		case '1':
 			memset(&buf[0], 0, sizeof(buf));
 			//получаем имя автора
-			recv(s2, buf, sizeof(buf), 0);
+			recv(socket, buf, sizeof(buf), 0);
 			buf[strcspn(buf, "\n")] = 0;
 			author_name = buf;
 
@@ -133,7 +165,7 @@ DWORD WINAPI ThreadFunc(LPVOID client_socket) {
 			}
 
 			//отправляем результат поиска
-			send(s2, message.c_str(), message.size(), 0);
+			send(socket, message.c_str(), message.size(), 0);
 			break;
 		case '2':
 			if (books_list.size() > 0) {
@@ -143,12 +175,27 @@ DWORD WINAPI ThreadFunc(LPVOID client_socket) {
 				message = "No author found. Please try to enter different author";
 			}
 			//отправляем результат
-			send(s2, message.c_str(), message.size(), 0);
+			send(socket, message.c_str(), message.size(), 0);
 			break;
 
+		case '4':
+			memset(&buf[0], 0, sizeof(buf));
+			//получаем имя автора
+			recv(socket, buf, sizeof(buf), 0);
+			buf[strcspn(buf, "\n")] = 0;
+			message = deleteBook(buf);
+
+			//memset(&buf[0], 0, sizeof(buf));
+			////получаем индекс книги для удаления
+			//recv(socket, buf, sizeof(buf), 0);
+			//message = deleteBook(buf);
+
+			//отправляем результат удаления
+			send(socket, message.c_str(), message.size(), 0);
+			break;
 		default:
 			cout << "Coonection will be closed" << endl;
-			closesocket(s2);
+			closesocket(socket);
 			exit(0);
 			break;
 		}

@@ -127,10 +127,6 @@ string getClientRequest(const SOCKET& client_socket) {
 
 DWORD WINAPI ThreadFunc(LPVOID client_socket) {
 	int main_menu_choise;
-	string client_request;
-	book_data new_book;
-	vector<book_data> books_filtered;
-	string message_to_client;
 
 	SOCKET socket = ((SOCKET*)client_socket)[0];
 
@@ -139,6 +135,11 @@ DWORD WINAPI ThreadFunc(LPVOID client_socket) {
 			main_menu_choise = stoi(getClientRequest(socket));
 
 			cout << "Server received command: " << main_menu_choise << endl;
+
+			string message_to_client = "";
+			string client_request;
+			book_data new_book;
+			vector<book_data> books_filtered;
 
 			switch (main_menu_choise) {
 			case 1:
@@ -225,9 +226,6 @@ void printConnectionIsReady(int& clientNumber) {
 
 int main() {
 	feel_data(books_list);
-	//print_books(books_list);
-	//cout << "Size of data: " << size(books_list) << endl;
-
 	int clientNumber = 0;
 
 	WORD wVersionRequested;
@@ -245,7 +243,7 @@ int main() {
 	int c = listen(s, 5);
 	cout << "Server receive ready" << endl;
 	cout << endl;
-	// извлекаем сообщение из очереди
+	
 	SOCKET client_socket; // сокет для клиента
 	sockaddr_in client_addr; // адрес клиента (заполняется системой)
 	int client_addr_size = sizeof(client_addr);
